@@ -1,19 +1,28 @@
-const fsp = require('fs/promises')
-const { resolve, join, relative } = require('path')
-const { formatWithOptions } = require('util')
-const log = require('proc-log')
+const fsp = require('node:fs/promises')
+const { resolve, join, relative } = require('node:path')
+const { formatWithOptions } = require('node:util')
+const { log } = require('proc-log')
 const nopt = require('nopt')
 const npmGit = require('@npmcli/git')
 const promiseSpawn = require('@npmcli/promise-spawn')
 const mapWorkspaces = require('@npmcli/map-workspaces')
 
+// always use LF newlines for generated files. these files
+// are also set to use LF line endings in .gitattributes
+const EOL = '\n'
 const CWD = resolve(__dirname, '..')
 
 const pkg = require(join(CWD, 'package.json'))
-pkg.mapWorkspaces = async () => {
+pkg.mapWorkspaces = async ({ public = false } = {}) => {
   const ws = []
   for (const [name, path] of await mapWorkspaces({ pkg })) {
-    ws.push({ name, path, pkg: require(join(path, 'package.json')) })
+    const pkgJson = require(join(path, 'package.json'))
+
+    if (public && pkgJson.private) {
+      continue
+    }
+
+    ws.push({ name, path, pkg: pkgJson })
   }
   return ws
 }
@@ -24,7 +33,7 @@ const fs = {
   clean: (p) => fs.rimraf(p).then(() => fs.mkdirp(p)),
   rmAll: (p) => Promise.all(p.map(fs.rimraf)),
   writeFile: async (p, d) => {
-    await fsp.writeFile(p, d.trim() + '\n', 'utf-8')
+    await fsp.writeFile(p, d.trim() + EOL, 'utf-8')
     return `Wrote to ${relative(CWD, p)}`
   },
 }
@@ -123,6 +132,7 @@ git.dirty = () => npmGit.isClean({ cwd: CWD }).then(async r => {
     return 'git clean'
   }
   await git('status', '--porcelain=v1', '-uno')
+  await git('--no-pager', 'diff')
   throw new Error('git dirty')
 })
 
@@ -201,4 +211,5 @@ module.exports = {
   gh,
   npm,
   git,
+  EOL,
 }
