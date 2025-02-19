@@ -6,6 +6,10 @@ const pacote = {
     return spec === 'nobugs' ? {
       name: 'nobugs',
       version: '1.2.3',
+    } : spec === 'nullbugs' ? {
+      name: 'nullbugs',
+      version: '1.2.3',
+      bugs: null,
     } : spec === 'bugsurl' ? {
       name: 'bugsurl',
       version: '1.2.3',
@@ -59,13 +63,14 @@ t.test('open bugs urls & emails', async t => {
   const { npm } = await loadMockNpm(t, {
     mocks: {
       pacote,
-      '{LIB}/utils/open-url.js': openUrl,
+      '{LIB}/utils/open-url.js': { openUrl },
     },
   })
 
   const expected = {
     '.': 'https://example.com',
     nobugs: 'https://www.npmjs.com/package/nobugs',
+    nullbugs: 'https://www.npmjs.com/package/nullbugs',
     'bugsobj-nourl': 'https://www.npmjs.com/package/bugsobj-nourl',
     bugsurl: 'https://bugzilla.localhost/bugsurl',
     bugsobj: 'https://bugzilla.localhost/bugsobj',
